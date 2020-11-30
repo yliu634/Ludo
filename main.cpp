@@ -79,7 +79,7 @@ void testHLR() {
         IU.push_back(tmp);
     }
 
-    testStateofArt(IU);
+    //testStateofArt(IU);
     //testLudoHLF(keys, values, nn, zipfianKeys);
 
 /*
