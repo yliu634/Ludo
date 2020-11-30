@@ -86,7 +86,7 @@ add_executable(validity
 add_executable(microbenchmarks
         ${HEADER_FILES}
         ${COMMON_SOURCE_FILES}
-        microbenchmarks.cpp)
+        microbenchmarks.cpp main.cpp)
 
 add_executable(sideExperiments
         ${HEADER_FILES}

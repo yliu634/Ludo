@@ -909,7 +909,7 @@ void test() {
         cerr << e.what() << endl;
       }
 }
-
+/*
 int main(int argc, char **argv) {
   commonInit();
   
@@ -946,3 +946,4 @@ int main(int argc, char **argv) {
   
   return 0;
 }
+ */
