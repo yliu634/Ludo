@@ -881,18 +881,18 @@ void test() {
         }
   
 //        if (nn < 268435456)
-          testSetSep<VL, Val>(keys, values, nn, zipfianKeys);
+//          testSetSep<VL, Val>(keys, values, nn, zipfianKeys);
   
 //        testCuckoo<VL, Val>(keys, values, nn, zipfianKeys);
 
 //        testOthello<VL, Val>(keys, values, nn, zipfianKeys);
 //
-//        try {
-//          testLudo<VL, Val>(keys, values, nn, zipfianKeys);
-//        } catch (exception &e) {
-//          cout << e.what() << endl;
-//          break;
-//        }
+          try {
+            testLudo<VL, Val>(keys, values, nn, zipfianKeys);
+          } catch (exception &e) {
+            cout << e.what() << endl;
+            break;
+          }
 
 //        if (nn < 4194304) {
 //          testDPH<VL, Val>(keys, values, nn, zipfianKeys);
@@ -909,6 +909,7 @@ void test() {
         cerr << e.what() << endl;
       }
 }
+
 /*
 int main(int argc, char **argv) {
   commonInit();
@@ -946,4 +947,4 @@ int main(int argc, char **argv) {
   
   return 0;
 }
- */
+*/
