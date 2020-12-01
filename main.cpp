@@ -7,7 +7,7 @@
 
 using namespace std;
 
-uint64_t usernum = 1000;
+uint64_t usernum = 100;
 uint32_t dcnum = 14;
 double mobileuserrate = 0.2;
 
@@ -36,7 +36,7 @@ void testLudoHLR(vector<user<ID_Digest, DC>> IU) {
 //vector<ID_Digest> &keys, vector<DC> &values, uint64_t nn, vector<DC> &zipfianKeys){
 //mpc.h 1005 line tell you what you found.
 //in order to call cp(nn), mobile-list -> &keys, &values, nn;
-    unsigned nn = mobileuserrate * usernum;
+    unsigned nn = mobileuserrate * usernum, cost(0), Req(100);
     //construct cp, 3th parameter is VL = uint16_t, 200~300 DCs, I hope it could be 8-length.
     ControlPlaneMinimalPerfectCuckoo<ID_Digest, DC, 8> cp(nn);
     for (auto iter = mobileuserlist.cbegin(); iter != mobileuserlist.cend(); iter++) {
@@ -46,16 +46,16 @@ void testLudoHLR(vector<user<ID_Digest, DC>> IU) {
     //same as above with cp(nn)
     DataPlaneMinimalPerfectCuckoo<ID_Digest, DC, 8> dp(cp);
     for (unsigned iDCcnt = 0; iDCcnt < dcnum; ++iDCcnt) {
-        unsigned Req = 10, cost = 0, iReq = 1;
-        for (iReq = 1; iReq <= 0.5 * Req; ++iReq) {
-            auto tmp = IU[rand() % usernum];//H
+        //unsigned Req = 100, iReq = 1;
+        for (unsigned iReq = 1; iReq <= 0.5 * Req; ++iReq) {
+            auto tmp = IU[rand() % usernum];//usernum
+            ID_Digest ID = tmp.id;
             DC Home = tmp.HomeLoc;
             DC LudoFindVisitor{1};
-            cout << LudoFindVisitor<<endl;//
-            if (!dp.lookUp(Home, LudoFindVisitor)) {
+            if (!dp.lookUp(ID, LudoFindVisitor)) {
                 cout << "Not found in Mobile user list" << endl;
                 cost += 2 * dijkstraDC[iDCcnt][Home];
-            } else {/*
+            } else {
                 //cost += (dijks[iDCcnt][tmp.H]>dijks[iDCcnt][LudoFindVisitor])?
                 // 2 * dijkstra[iDCcnt][LudoFindVisitor]: 2 * dijkstra[iDCcnt][LudoFindVisitor];
                 uint8_t Hflag = ((rand() % 100) <= 100 * tmp.HomeInfoRatio) ? 1 : 0;//info in home.
@@ -65,20 +65,23 @@ void testLudoHLR(vector<user<ID_Digest, DC>> IU) {
                 else if (Hflag == 0 && Hnear == 0)
                     cost += 2 * dijkstraDC[iDCcnt][LudoFindVisitor];
                 else
-                    cost += 2(dijkstraDC[iDCcnt][LudoFindVisitor] + dijkstraDC[iDCcnt][LudoFindVisitor]);
-                */
+                    cost += 2 * (dijkstraDC[iDCcnt][LudoFindVisitor] + dijkstraDC[iDCcnt][LudoFindVisitor]);
             }
+            //cout << LudoFindVisitor<<endl;//
         }
     }
+    cost /= (0.5 * Req * dcnum);
+    cout << "Ludo: " << cost << endl;
 }
 
 template<class ID_Digest, class DC>
 void testStateofArt(vector<user<ID_Digest, DC>> IU) {
+    unsigned Req = 10, cost(0);
     for (unsigned iDCcnt = 0; iDCcnt < dcnum; ++iDCcnt) {
         //gen_request for every DC, OutLocInfoRatio percent:-> not this DC;
         //1-ratio percent:-> this DC; Total 1000 times; 0.5 means outLocInfoRatio;
-        unsigned Req = 10, cost = 0, iReq = 1;
-        for (iReq = 1; iReq <= 0.5 * Req; ++iReq) {
+        //unsigned Req = 10, cost = 0, iReq = 1;
+        for (unsigned iReq = 1; iReq <= 0.5 * Req; ++iReq) {
             auto tmp = IU[rand() % usernum];//H
             DC Home = tmp.HomeLoc;
             // not in home prob.
@@ -91,11 +94,12 @@ void testStateofArt(vector<user<ID_Digest, DC>> IU) {
                     //calculate the dijsktra[finded V][vector[DCcnt]]
                     cost += dijkstraDC[iDCcnt][VisitPlace];
                 }
+                cost += dijkstraDC[iDCcnt][Home];
             }
-            cost += dijkstraDC[iDCcnt][Home];
         }
     }
-    //cost for unique DC;
+    cost /= (0.5 * Req * dcnum);
+    cout << "State of Art: " << cost << endl;
 }
 
 
@@ -119,7 +123,7 @@ void testHLR() {
         IU.push_back(tmp);
     }
 
-    //testStateofArt<ID_Digest, DC>(IU);
+    testStateofArt<ID_Digest, DC>(IU);
     testLudoHLR<ID_Digest, DC>(IU);
 
 /*
