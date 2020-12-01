@@ -76,6 +76,7 @@ set(HEADER_FILES
         utils/json.hpp
         utils/debugbreak.h
         input/input_types.h
+        dijsktraform.h
         )
 
 add_executable(validity
