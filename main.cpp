@@ -16,10 +16,13 @@ struct user {
     double HomeInfoRatio = 0.5;
 };
 
-uint32_t userdcnum = 10;
+uint8_t usertype = 0;
+uint32_t userdcnum = 360;
 uint8_t dcnum = 14; //no more than 256;
 uint32_t Totalusernum = userdcnum * dcnum;//42,94 million
-double mobileuserrate = 0.6;// 2-2-6 for 14 if 0.4. 3-3-4 for 0.6;
+//mistake for mobileuserrate, it is a ratio for (DV_H & DH_V users)/(DV_H + DH_V + D_H_V) ratio,
+//it wouldnt be a problem if the number of user is big enough.
+double mobileuserrate = 0.66;// 2-2-6 for 14 if 0.4. 3-3-4 for 0.6;
 user<uint32_t, uint8_t> tmp1;
 vector<vector<user<uint32_t, uint8_t>>> IU(dcnum, vector<user<uint32_t, uint8_t>> (userdcnum, tmp1)); //userlist including id and dc #
 
@@ -48,8 +51,9 @@ void testLudoHLR() {
 //vector<ID> &keys, vector<DC> &values, uint64_t nn, vector<DC> &zipfianKeys){
 //mpc.h 1005 line tell you what you found.
 //in order to call cp(nn), mobile-list -> &keys, &values, nn;
-    unsigned nn = mobileuserrate * Totalusernum, cost(0), Req(1000);
+    unsigned nn = Totalusernum, cost(0), Req(1000);
     //construct cp, 3th parameter is VL = uint16_t, 200~300 DCs, I hope it could be 8-length.
+    //cout << mobileuserlist.size() << endl;
     ControlPlaneMinimalPerfectCuckoo<ID, DC> cp(nn);
     for (auto iter = mobileuserlist.cbegin(); iter != mobileuserlist.cend(); iter++) {
         cp.insert(iter->first, iter->second);
@@ -57,7 +61,7 @@ void testLudoHLR() {
     cp.prepareToExport();
     //same as above with cp(nn)
     //DataPlaneMinimalPerfectCuckoo<ID, DC> dp(cp);
-    uint8_t usertype = 0;
+
     for (unsigned iDCcnt = 0; iDCcnt < dcnum; ++iDCcnt) {
         //unsigned Req = 100, iReq = 1;
         vector<user<ID, DC>> inquiryList;
@@ -83,9 +87,8 @@ void testLudoHLR() {
                 else if (Hflag == 0 && Hnear == 0)
                     cost += dijkstraDC[iDCcnt][LudoFindVisitor];
                 else
-                    cost += dijkstraDC[iDCcnt][LudoFindVisitor] + dijkstraDC[iDCcnt][LudoFindVisitor];
+                    cost += dijkstraDC[iDCcnt][LudoFindVisitor] + dijkstraDC[iDCcnt][Home];
             }
-            //cout << LudoFindVisitor<<endl;//
         }
     }
     cost /= (Req * dcnum);
@@ -95,7 +98,6 @@ void testLudoHLR() {
 template<class ID, class DC>
 void testStateofArt() {
     unsigned Req(100), cost(0);
-    uint8_t usertype = 2;
     for (unsigned iDCcnt = 0; iDCcnt < dcnum; ++iDCcnt) {
         //gen_request for every DC, OutLocInfoRatio percent:-> not this DC;
         //1-ratio percent:-> this DC; Total 1000 times; 0.5 means outLocInfoRatio;

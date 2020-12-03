@@ -421,7 +421,6 @@ public:
         }
       }
     }
-
     return other;
   }
 
