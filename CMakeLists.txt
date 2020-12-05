@@ -77,7 +77,7 @@ set(HEADER_FILES
         utils/debugbreak.h
         input/input_types.h
         dijsktraform.h
-        home_visit_location.h)
+        home_visit.h)
 
 add_executable(validity
         ${HEADER_FILES}

@@ -1,6 +1,6 @@
 #include <vector>
 
-void gen_dijkstraDC(std::vector<std::vector<unsigned>> &RTTform, int dcnum) {
+void gen_dijkstraDC(std::vector<std::vector<uint32_t>> &RTTform, int dcnum) {
     int tmp[14][14] =
             {{0,   35,  109, 50,  272, 251, 259, 276, 181, 288, 152, 185, 175, 188},
              {35,  0,   126, 67,  228, 222, 232, 231, 155, 265, 125, 160, 149, 92},
