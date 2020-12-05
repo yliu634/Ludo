@@ -15,11 +15,13 @@ struct user {
     float HomeInfoRatio = 0.5;
 };
 
-template<class ID, class DC, DC usertype = 1, ID Totalusernum = 16000>
+template<class ID, class DC>
 class LudoNearStateofArt {
 
 public:
     ostringstream oss;
+    DC usertype;
+    ID Totalusernum;
     const DC dcnum = 14; //no more than 256;
     const ID userdcnum = Totalusernum / 14;
     //double mobileuserrate = 0.66; // 2-2-6 for 14 if 0.4. 3-3-4 for 0.6;
@@ -28,7 +30,7 @@ public:
     vector<vector<uint32_t>> dijkstraDC;
     map<ID, uint8_t> mobileuserlist;
 
-    explicit LudoNearStateofArt() {
+    explicit LudoNearStateofArt(uint8_t ty, uint32_t Totl):usertype(ty),Totalusernum(Totl) {
         Clear();
     }
 
@@ -152,8 +154,9 @@ public:
         //cpBuild.stop();
         cost /= (Req * dcnum);
         oss << "Ludo RTT: " << cost << endl;
-        oss << "Memory cost: " << cp.getMemoryCost() << endl;
+        oss << "Memory cost: " << cp.getMemoryCost() << endl<<"--------------";
         cout << oss.str() << endl;
+
         oss.clear();
         // x uint8_t one byte.
 
@@ -196,9 +199,12 @@ public:
         oss << "Memory Cost: " << getMemoryStateofArt() << endl;
         cout << oss.str() << endl;
         oss.str("");
-        cout <<oss.str()<<endl;
+        cout << oss.str() << endl;
 
     }//end state of art
+
+    ~LudoNearStateofArt(){
+    }
 
     void test() {
         testStateofArt();

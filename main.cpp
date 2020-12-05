@@ -9,15 +9,18 @@
 using namespace std;
 
 template<class ID, class DC>
-void testHLR() {
-    LudoNearStateofArt<ID, DC, 1, 16000> dd;
+void testHLR(uint8_t &t, uint32_t &T) {
+    LudoNearStateofArt<ID, DC> dd(t, T);
     dd.test();
 }
 
 int main(int argc, char **argv) {
     commonInit();
-    testHLR<uint32_t, uint8_t>();
-
+    uint8_t t = 2; uint32_t T = 8000;
+    for (int i = 0; i < 11; i++) {
+        T *= 2;
+        testHLR<uint32_t, uint8_t>(t, T);
+    }
 }
 
 
