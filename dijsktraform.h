@@ -1,10 +1,10 @@
 #include <vector>
 
-void gen_dijkstraDC(std::vector<std::vector<uint32_t>> &RTTform, int dcnum) {
+void gen_dijkstraDC(vector<vector<uint16_t>> &RTTform, uint16_t dcnum) {
     /*RTTform.resize(dcnum);
     for (auto el:RTTform)
         el = vector<uint32_t>(dcnum, 0);*/
-    int tmp[14][14] =
+    /*int tmp[dcnum][dcnum] =
             {{0,   35,  109, 50,  272, 251, 259, 276, 181, 288, 152, 185, 175, 188},
              {35,  0,   126, 67,  228, 222, 232, 231, 155, 265, 125, 160, 149, 92},
              {109, 126, 0,   60,  349, 342, 354, 353, 274, 387, 245, 282, 269, 214},
@@ -19,11 +19,17 @@ void gen_dijkstraDC(std::vector<std::vector<uint32_t>> &RTTform, int dcnum) {
              {185, 160, 282, 222, 93,  86,  98,  98,  25,  117, 36,  0,   12,  81},
              {175, 149, 169, 210, 81,  76,  86,  84,  14,  129, 25,  12,  0,   58},
              {118, 92,  214, 157, 182, 132, 143, 164, 65,  171, 36,  81,  58,  0}};
+    */
     for (int i = 0; i < dcnum; i++) {
-        for (int j = 0; j < dcnum; j++) {
-            RTTform[i][j] = tmp[i][j];
+        RTTform[i][i] = 0;
+        if (i == dcnum-1)
+            continue;
+        for (int j = i+1; j < dcnum; j++) {
+            RTTform[i][j] = rand() % 500;
+            RTTform[j][i] = RTTform[i][j];
         }
     }
+    //cout << "RTT completed.";
 }//end
 
 /*for(auto iter = RTTform.cbegin();iter!=RTTform.cend();iter++){

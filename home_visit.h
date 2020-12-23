@@ -3,9 +3,6 @@
 
 #include "common.h"
 
-//
-//
-//
 template<class ID, class DC>
 struct user {
     bool isMobileUser = true;
@@ -22,21 +19,21 @@ public:
     ostringstream oss;
     DC usertype;
     ID Totalusernum;
-    const DC dcnum = 14; //no more than 256;
-    const ID userdcnum = Totalusernum / 14;
+    const DC dcnum = 8; //no more than 256;
+    const ID userdcnum = Totalusernum / dcnum;
     //double mobileuserrate = 0.66; // 2-2-6 for 14 if 0.4. 3-3-4 for 0.6;
+    vector<vector<user<ID, DC>>> IU;//(dcnum, vector<user<ID, uint8_t>>(userdcnum,
+    vector<vector<uint16_t>> dijkstraDC;
+    map<ID, DC> mobileuserlist;
+    ControlPlaneMinimalPerfectCuckoo<ID, DC> *cptr;
 
-    vector<vector<user<ID, uint8_t>>> IU;//(dcnum, vector<user<ID, uint8_t>>(userdcnum,
-    vector<vector<uint32_t>> dijkstraDC;
-    map<ID, uint8_t> mobileuserlist;
-
-    explicit LudoNearStateofArt(uint8_t ty, uint32_t Totl):usertype(ty),Totalusernum(Totl) {
+    explicit LudoNearStateofArt(uint8_t ty, ID Totl) : usertype(ty), Totalusernum(Totl) {
         Clear();
     }
 
     void Clear() {
 
-        vector<uint32_t> empty_dijs(userdcnum, 0);
+        vector<DC> empty_dijs(dcnum, 0);
         dijkstraDC.clear();
         dijkstraDC.resize(dcnum, empty_dijs);
         gen_dijkstraDC(dijkstraDC, dcnum);
@@ -44,28 +41,17 @@ public:
         user<ID, DC> empty_user;
         //empty_user.clear();
         IU.clear();
-        IU.resize(dcnum, vector<user<ID, uint8_t>>(userdcnum, empty_user));
+        IU.resize(dcnum, vector<user<ID, DC>>(userdcnum, empty_user));
 
         MobileUserListInit();
     }
 
     void MobileUserListInit() {
-        LFSRGen<uint32_t> keyGen(0x1234567801234567ULL, 1U << 30, 0); //Totalusernum, 0);
+        LFSRGen<ID> keyGen(0x1234567801234567ULL, 1U << 30, 0); //Totalusernum, 0);
 
         for (DC idc = 0; idc < dcnum; idc++) {
             ID iuserdc = 0;
-            for (; iuserdc < 0.33 * userdcnum; iuserdc++) {
-                user<ID, DC> tmp;
-                keyGen.gen(&tmp.id);
-                tmp.isMobileUser = 1;
-                tmp.HomeLoc = idc;
-                tmp.VisitorLoc = rand() % dcnum;
-                while (tmp.VisitorLoc == idc)
-                    tmp.VisitorLoc = rand() % dcnum;
-                IU[idc][iuserdc] = tmp;
-                mobileuserlist.insert(pair<ID, DC>(tmp.id, tmp.VisitorLoc));
-            }
-            for (; iuserdc < 0.66 * userdcnum; iuserdc++) {
+            for (; iuserdc < 0.5 * userdcnum; iuserdc++) {
                 user<ID, DC> tmp;
                 keyGen.gen(&tmp.id);
                 tmp.isMobileUser = 1;
@@ -100,28 +86,36 @@ public:
 
     void genInquiryList(const DC idc, const uint32_t req, vector<user<ID, DC>> &inquiryList) {
         //usertype =0,1,2, maps to DH_V, DV_H, and D_H_V respectively.
-        //
-        uint32_t bound1 = 0.33 * userdcnum, bound2 = 0.66 * userdcnum;
-        if (usertype == 0) {
+
+        uint32_t bound = 0.5 * userdcnum;
+        if (usertype == 1) {
             for (uint32_t icnt = 1; icnt < req; icnt++)
-                inquiryList.push_back(IU[idc][rand() % bound1]);
-        } else if (usertype == 1) {
-            for (uint32_t icnt = 1; icnt < req; icnt++)
-                inquiryList.push_back(IU[idc][rand() % (bound2 - bound1) + bound1]);
+                inquiryList.push_back(IU[idc][rand() % bound]);
         } else {
             for (uint32_t icnt = 1; icnt < req; icnt++)
-                inquiryList.push_back(IU[idc][rand() % (userdcnum - bound2) + bound2]);
+                inquiryList.push_back(IU[idc][rand() % bound + bound]);
         }
     }//end
 
-    void testLudoHLR() {
+    void AddMobileUser(pair<ID, DC> &p) {
+        //pair<ID, DC> aa(34144134, 35);
+        (*cptr).insert(p.first, p.second);
+    }
 
-        uint32_t nn = Totalusernum, cost(0), Req(1000);
+    void RemoveMobileUser(ID &target) {
+        (*cptr).remove(target);
+    }
+
+    void testLudoHLR() {
+        uint32_t nn(Totalusernum), cost(0), Req(1000);
         ControlPlaneMinimalPerfectCuckoo<ID, DC> cp(nn);
+        cptr = &cp;
         for (auto iter = mobileuserlist.cbegin(); iter != mobileuserlist.cend(); iter++) {
             cp.insert(iter->first, iter->second);
         }
         cp.prepareToExport();
+        DataPlaneMinimalPerfectCuckoo<ID, DC> dp(cp);
+
         for (DC iDCcnt = 0; iDCcnt < dcnum; ++iDCcnt) {
             //unsigned Req = 100, iReq = 1;
             vector<user<ID, DC>> inquiryList;
@@ -131,7 +125,6 @@ public:
                 DC Home = tmp.HomeLoc;
                 DC LudoFindVisitor{0};
                 //replace for a little while.
-                //auto Visitor = mobileuserlist.find(tmp.id);
                 //cp.lookUp(ID, LudoFindVisitor);
                 //if ((Visitor == mobileuserlist.end())){//&&(!dp.lookUp(ID, LudoFindVisitor))) {
                 if (!(cp.lookUp(id, LudoFindVisitor))) {
@@ -154,12 +147,12 @@ public:
         //cpBuild.stop();
         cost /= (Req * dcnum);
         oss << "Ludo RTT: " << cost << endl;
-        oss << "Memory cost: " << cp.getMemoryCost() << endl<<"--------------";
+        oss << "Memory cost: " << cp.getMemoryCost() << endl << "--------------";
+        //AddMobileUser();
         cout << oss.str() << endl;
 
         oss.clear();
         // x uint8_t one byte.
-
     }//end ludo;
 
     void testStateofArt() {
@@ -203,7 +196,7 @@ public:
 
     }//end state of art
 
-    ~LudoNearStateofArt(){
+    ~LudoNearStateofArt() {
     }
 
     void test() {
