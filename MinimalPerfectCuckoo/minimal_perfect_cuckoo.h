@@ -968,9 +968,9 @@ public:
 
     return bucket;
   }
-
+  //given specific bucket index and slot id, return value contained in it;
   inline void writeSlot(uint32_t bid, char sid, Value val) {
-    uint64_t offsetFromBeginning = uint64_t(bid) * bucketLength + LocatorSeedLength + sid * VL;
+    uint64_t offsetFromBeginning = uint64_t(bid) * bucketLength + LocatorSeedLength + sid * (VL + FPL);
     uint64_t start = offsetFromBeginning / 64;
     char offset = char(offsetFromBeginning % 64);
 
@@ -978,7 +978,7 @@ public:
   }
 
   inline Value readSlot(uint32_t bid, char sid) {
-    uint64_t offsetFromBeginning = uint64_t(bid) * bucketLength + LocatorSeedLength + sid * VL;
+    uint64_t offsetFromBeginning = uint64_t(bid) * bucketLength + LocatorSeedLength + sid * (VL + FPL);
     uint64_t start = offsetFromBeginning / 64;
     char offset = char(offsetFromBeginning % 64);
 
