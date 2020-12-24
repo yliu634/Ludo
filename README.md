@@ -1,4 +1,4 @@
-# Ludo hashing
+# HLR for Ludo hashing
 
 ## Overview
 

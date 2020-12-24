@@ -776,8 +776,11 @@ public:
 
 template<class Key, class Value, uint8_t VL = sizeof(Value) * 8, uint8_t DL = 0>
 class DataPlaneMinimalPerfectCuckoo {
+  typedef uint8_t FP;
+  static const uint8_t FPL = sizeof(FP) * 8;
   static const uint8_t kSlotsPerBucket = 4;   // modification to this value leads to undefined behavior
-  static const uint8_t bucketLength = LocatorSeedLength + kSlotsPerBucket * (VL + DL);
+  static const uint8_t bucketLength = LocatorSeedLength + kSlotsPerBucket * (VL + DL + FPL);
+  // just assume the fingerprint length is 16;
 
   static const uint64_t ValueMask = (1ULL << VL) - 1;
   static const uint64_t DigestMask = ((1ULL << DL) - 1) << VL;
@@ -795,14 +798,15 @@ public:
   struct Bucket {  // only as parameters and return values for easy access. the storage is compact.
     uint8_t seed;
     Value values[kSlotsPerBucket];
+    FP fingerprint[kSlotsPerBucket];
 
     bool operator==(const Bucket &other) const {
       if (seed != other.seed) return false;
 
       for (char s = 0; s < kSlotsPerBucket; s++) {
         if ((values[s] & ValueMask) != (other.values[s] & ValueMask)) return false;
+        if (fingerprint[s] != other.fingerprint[s]) return false;
       }
-
       return true;
     }
 
@@ -832,7 +836,10 @@ public:
       for (char slot = 0; slot < kSlotsPerBucket; ++slot) {
         if (cpBucket.occupiedMask & (1U << slot)) {
           const Key &k = cpBucket.keys[slot];
-          dpBucket.values[locateHash(k) >> 62] = cpBucket.values[slot];
+          //cause the locateHash(k) is 64bit, >>62, it should be 00~11, mapping into 0~3;
+          const uint8_t slotpos = locateHash(k) >> 62;
+          dpBucket.values[slotpos] = cpBucket.values[slot];
+          dpBucket.fingerprint[slotpos] = locateHash(k) >> 48;
         }
       }
 
@@ -876,40 +883,35 @@ public:
 
   template<char length>
   inline void writeMem(uint64_t start, char offset, uint64_t v) {
-    assert(v < (1ULL << length));
+      assert(v < (1ULL << length));
+      // [offset, offset + length) should be 0 and others are 1
+      uint64_t mask = ~uint64_t(((1ULL << length) - 1) << offset);
+      char overflow = char(offset + length - 64);
 
-    // [offset, offset + length) should be 0 and others are 1
-    uint64_t mask = ~uint64_t(((1ULL << length) - 1) << offset);
-    char overflow = char(offset + length - 64);
+      memory[start] &= mask;
+      memory[start] |= (uint64_t) v << offset;
 
-    memory[start] &= mask;
-    memory[start] |= (uint64_t) v << offset;
+      if (overflow > 0) {
+         mask = uint64_t(-1) << overflow;     // lower "overflow" bits should be 0, and others are 1
+         memory[start + 1] &= mask;
+         memory[start + 1] |= v >> (length - overflow);
+      }
 
-    if (overflow > 0) {
-      mask = uint64_t(-1) << overflow;     // lower "overflow" bits should be 0, and others are 1
-      memory[start + 1] &= mask;
-      memory[start + 1] |= v >> (length - overflow);
-    }
-
-    assert(v == readMem<length>(start, offset));
+      assert(v == readMem<length>(start, offset));
   }
 
   template<char length>
   inline uint64_t readMem(uint64_t start, char offset) const {
-    char left = char(offset + length - 64);
-    left = char(left < 0 ? 0 : left);
-
-    uint64_t mask = ~(uint64_t(-1)
-      << (length - left));   // lower length-left bits should be 1, and others are 0
-    uint64_t result = (memory[start] >> offset) & mask;
-
-    if (left > 0) {
-      mask = ~(uint64_t(-1) << left);     // lower left bits should be 1, and others are 0
-      result |= (memory[start + 1] & mask) << (length - left);
+      char left = char(offset + length - 64);
+      left = char(left < 0 ? 0 : left);
+      uint64_t mask = ~(uint64_t(-1) << (length - left));   // lower length-left bits should be 1, and others are 0
+      uint64_t result = (memory[start] >> offset) & mask;
+      if (left > 0) {
+         mask = ~(uint64_t(-1) << left);     // lower left bits should be 1, and others are 0
+         result |= (memory[start + 1] & mask) << (length - left);
+      }
+      return result;
     }
-
-    return result;
-  }
 
   vector<uint8_t> lock = vector<uint8_t>(8192, 0);
 
@@ -923,11 +925,14 @@ public:
     writeMem<LocatorSeedLength>(start, offset, bucket.seed);
 
     for (char i = 0; i < kSlotsPerBucket; ++i) {
-      uint64_t offsetFromBeginning = i1 + LocatorSeedLength + i * VL;
+      uint64_t offsetFromBeginning = i1 + LocatorSeedLength + i * (VL + FPL);
       start = offsetFromBeginning / 64;
       offset = char(offsetFromBeginning % 64);
 
       writeMem<VL>(start, offset, bucket.values[i]);
+      start = (offsetFromBeginning + VL) / 64;
+      offset = char((offsetFromBeginning + VL) % 64);
+      writeMem<FPL>(start, offset, bucket.fingerprint[i]);
     }
 
 #ifndef NDEBUG
@@ -950,11 +955,15 @@ public:
     }
 
     for (char i = 0; i < kSlotsPerBucket; ++i) {
-      uint64_t offsetFromBeginning = i1 + LocatorSeedLength + i * VL;
+      uint64_t offsetFromBeginning = i1 + LocatorSeedLength + i * (VL + FPL);
       start = offsetFromBeginning / 64;
       offset = char(offsetFromBeginning % 64);
 
       bucket.values[i] = readMem<VL>(start, offset);
+
+      start = (offsetFromBeginning + VL) / 64;
+      offset = char((offsetFromBeginning + VL) % 64);
+      bucket.fingerprint[i] = readMem<FPL>(start, offset);
     }
 
     return bucket;
@@ -1001,9 +1010,11 @@ public:
       if (va1 != va2 || vb1 != vb2) continue;
 
       uint64_t i = FastHasher64<Key>(bucket.seed)(k) >> 62;
+      FP baseline = FastHasher64<Key>(bucket.seed)(k) >> 48;
       Value result = bucket.values[i];
+      FP resultFingerPrint = bucket.fingerprint[i];
 
-      if ((result & DigestMask) == ((digestH(k) << VL) & DigestMask)) {
+      if ((result & DigestMask) == ((digestH(k) << VL) & DigestMask) && baseline == resultFingerPrint) {
         out = result & ValueMask;
         return true;
       } else { return false; }

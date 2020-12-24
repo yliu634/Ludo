@@ -16,7 +16,7 @@ void testHLR(uint8_t &ty, ID &T) {
 
 int main(int argc, char **argv) {
     commonInit();
-    uint8_t ty = 1; uint32_t T = 8;
+    uint8_t ty = 1; uint32_t T = 10000;
     for (int i = 0; i < 1; i++) {
         T *= 2;
         testHLR<uint32_t, uint16_t>(ty, T);

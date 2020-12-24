@@ -113,9 +113,11 @@ public:
         for (auto iter = mobileuserlist.cbegin(); iter != mobileuserlist.cend(); iter++) {
             cp.insert(iter->first, iter->second);
         }
+        //cp.insert(444,4);
         cp.prepareToExport();
         DataPlaneMinimalPerfectCuckoo<ID, DC> dp(cp);
-
+        //DC aaa;int flagg = dp.lookUp(444,aaa);
+        //int flaggg = cp.lookUp(444,aaa);
         for (DC iDCcnt = 0; iDCcnt < dcnum; ++iDCcnt) {
             //unsigned Req = 100, iReq = 1;
             vector<user<ID, DC>> inquiryList;
