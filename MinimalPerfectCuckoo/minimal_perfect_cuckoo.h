@@ -832,14 +832,15 @@ public:
       }
 
       const FastHasher64<Key> locateHash(cpBucket.seed);
+      const FastHasher64<Key> fingerHash(0);
 
       for (char slot = 0; slot < kSlotsPerBucket; ++slot) {
         if (cpBucket.occupiedMask & (1U << slot)) {
           const Key &k = cpBucket.keys[slot];
           //cause the locateHash(k) is 64bit, >>62, it should be 00~11, mapping into 0~3;
           const uint8_t slotpos = locateHash(k) >> 62;
-          dpBucket.values[slotpos] = cpBucket.values[slot];
-          dpBucket.fingerprint[slotpos] = locateHash(k) >> 48;
+          dpBucket.values[locateHash(k) >> 62] = cpBucket.values[slot];
+          dpBucket.fingerprint[locateHash(k) >> 62] = fingerHash(k) >> 48;
         }
       }
 
@@ -969,20 +970,29 @@ public:
     return bucket;
   }
   //given specific bucket index and slot id, return value contained in it;
-  inline void writeSlot(uint32_t bid, char sid, Value val) {
+  inline void writeSlot(uint32_t bid, char sid, Value val, FP finger) {
     uint64_t offsetFromBeginning = uint64_t(bid) * bucketLength + LocatorSeedLength + sid * (VL + FPL);
     uint64_t start = offsetFromBeginning / 64;
     char offset = char(offsetFromBeginning % 64);
-
     writeMem<VL>(start, offset, val);
+
+    offsetFromBeginning += VL;
+    start = offsetFromBeginning / 64;
+    offset = char(offsetFromBeginning % 64);
+    writeMem<FPL>(start, offset, finger);
   }
 
-  inline Value readSlot(uint32_t bid, char sid) {
+  inline Value readSlot(uint32_t bid, char sid, FP &finger) {
     uint64_t offsetFromBeginning = uint64_t(bid) * bucketLength + LocatorSeedLength + sid * (VL + FPL);
     uint64_t start = offsetFromBeginning / 64;
     char offset = char(offsetFromBeginning % 64);
 
-    return readMem<VL>(start, offset);
+    auto buffer = readMem<VL>(start, offset);
+    offsetFromBeginning += VL;
+    start = offsetFromBeginning / 64;
+    offset = char(offsetFromBeginning % 64);
+    finger = readMem<FPL>(start, offset);
+    return buffer;
   }
 
   unordered_map<Key, Value> fallback;
@@ -1010,7 +1020,7 @@ public:
       if (va1 != va2 || vb1 != vb2) continue;
 
       uint64_t i = FastHasher64<Key>(bucket.seed)(k) >> 62;
-      FP baseline = FastHasher64<Key>(bucket.seed)(k) >> 48;
+      FP baseline = FastHasher64<Key>(0)(k) >> 48;
       Value result = bucket.values[i];
       FP resultFingerPrint = bucket.fingerprint[i];
 
@@ -1021,7 +1031,7 @@ public:
     }
   }
 
-  inline void applyInsert(const vector<MPC_PathEntry> &path, Value value) {
+  inline void applyInsert(const vector<MPC_PathEntry> &path, Value value, FP finger) {
     for (int i = 0; i < path.size(); ++i) {
       MPC_PathEntry entry = path[i];
       Bucket bucket = readBucket(entry.bid);
@@ -1029,17 +1039,22 @@ public:
 
       uint8_t toSlots[] = {entry.s0, entry.s1, entry.s2, entry.s3};
 
-      Value buffer[4];       // solve the permutation is slow. just copy the 4 elements
+      Value buffer1[4];       // solve the permutation is slow. just copy the 4 elements
+      FP buffer2[4];
       for (char s = 0; s < 4; ++s) {
-        buffer[s] = bucket.values[s];
+        buffer1[s] = bucket.values[s];
+        buffer2[s] = bucket.fingerprint[s];
       }
 
       for (char s = 0; s < 4; ++s) {
-        bucket.values[toSlots[s]] = buffer[s];
+        bucket.values[toSlots[s]] = buffer1[s];
+        bucket.fingerprint[toSlots[s]] = buffer2[s];
       }
+
 
       if (i + 1 == path.size()) {  // put the new value
         bucket.values[entry.sid] = value;
+        bucket.fingerprint[entry.sid] = finger;
       } else {  // move key from another bucket and slot to this bucket and slot
         MPC_PathEntry from = path[i + 1];
         uint8_t tmp[4] = {from.s0, from.s1, from.s2, from.s3};
@@ -1050,7 +1065,9 @@ public:
             break;
           }
         }
-        bucket.values[entry.sid] = readSlot(from.bid, sid);
+        FP tmpFinger;
+        bucket.values[entry.sid] = readSlot(from.bid, sid, tmpFinger);
+        bucket.fingerprint[entry.sid] = tmpFinger;
       }
 
       lock[entry.bid & 8191]++;
@@ -1070,14 +1087,14 @@ public:
     }
   }
 
-  inline void applyUpdate(uint32_t bs, Value val) {
+  inline void applyUpdate(uint32_t bs, Value val, FP finger) {
     uint32_t bid = bs >> 2;
     uint8_t sid = bs & 3;
 
     lock[bid & 8191]++;
     COMPILER_BARRIER();
 
-    writeSlot(bid, sid, val & ValueMask);
+    writeSlot(bid, sid, val & ValueMask, finger);
 
     COMPILER_BARRIER();
     lock[bid & 8191]++;
