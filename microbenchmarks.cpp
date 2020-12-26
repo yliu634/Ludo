@@ -911,17 +911,17 @@ void test() {
       }
 }
 
-
+/*
 int main(int argc, char **argv) {
   commonInit();
   
   if (argc == 1) {
-    /*
+
     for (int i = 0; i < 100; ++i) test<4, uint8_t>();
     for (int i = 0; i < 100; ++i) test<8, uint8_t>();
     for (int i = 0; i < 100; ++i) test<12, uint16_t>();
     for (int i = 0; i < 100; ++i) test<16, uint16_t>();
-     */
+
     for (int i = 0; i < 100; ++i) test<20, uint32_t>();
 //    test<32>();
   }
@@ -950,4 +950,4 @@ int main(int argc, char **argv) {
   
   return 0;
 }
-
+*/

@@ -20,7 +20,7 @@ public:
     DC usertype;
     ID Totalusernum;
     typedef uint16_t FP;
-    const DC dcnum = 256; //no more than 256;
+    const DC dcnum = 20; //no more than 256;
     const ID userdcnum = Totalusernum / dcnum;
     //double mobileuserrate = 0.66; // 2-2-6 for 14 if 0.4. 3-3-4 for 0.6;
     vector<vector<user<ID, DC>>> IU;//(dcnum, vector<user<ID, uint8_t>>(userdcnum,
@@ -119,6 +119,7 @@ public:
       DataPlaneMinimalPerfectCuckoo<ID, DC> dp(cp);
       cptr = &cp;
       dptr = &dp;
+      //cp.insert(444,4);
       //DC aaa;int flagg = dp.lookUp(444,aaa);
       //int flaggg = cp.lookUp(444,aaa);
       for (DC iDCcnt = 0; iDCcnt < dcnum; ++iDCcnt) {
@@ -132,7 +133,7 @@ public:
           //replace for a little while.
           //cp.lookUp(ID, LudoFindVisitor);
           //if ((Visitor == mobileuserlist.end())){//&&(!dp.lookUp(ID, LudoFindVisitor))) {
-          if (!((*dptr).lookUp(id, LudoFindVisitor))) {
+          if (!(dp.lookUp(id, LudoFindVisitor))) {
             //cout << "Not found in Mobile user list" << endl;
             cost += dijkstraDC[iDCcnt][Home];
           } else {
@@ -204,7 +205,7 @@ public:
     ~LudoNearStateofArt() {
     }
 
-    void UpdateBenchMark() {
+    void testLudoUpdate() {
 
       ControlPlaneMinimalPerfectCuckoo<ID, DC> cp(Totalusernum);
       for (auto iter = mobileuserlist.cbegin(); iter != mobileuserlist.cend(); iter++) {
@@ -216,11 +217,10 @@ public:
         }
       */
       cp.prepareToExport();
-      DataPlaneMinimalPerfectCuckoo<ID, DC> dp(cp);
       //dptr = &dp;
       vector<pair<vector<MPC_PathEntry>, pair<DC, FP>>> insertPaths;
       vector<pair<uint32_t, pair<DC, FP>>> modifications;
-      LFSRGen<ID> keyGen(0x1234567801234567ULL, 1U << 30, 0);
+      LFSRGen<ID> keyGen(0x1234567801234667ULL, 1U << 30, 0);
       // prepare many updates. modification : insertion : deletion = 1:1:1
       uint8_t i = 0;
       for (auto iter = mobileuserlist.cbegin(); iter != mobileuserlist.end(); iter++) {
@@ -236,7 +236,6 @@ public:
           cp.remove(k);
         } else if (i % 3 == 1) {
           ID k;
-          FP finger = FastHasher64<ID>(0)(k);
           while (true) {
             k = IU[rand() % dcnum][rand() % userdcnum].id;
             DC tmp;
@@ -244,13 +243,14 @@ public:
               break;
             }
           }
+          FP finger = FastHasher64<ID>(0)(k) >> 48;
           DC v = rand() % dcnum;
           cp.updateMapping(k, v);
           pair<uint32_t, uint32_t> tmp = cp.locate(k);
-          modifications.emplace_back((tmp.first << 2) + tmp.second, pair<ID, FP>(v, finger));
+          uint8_t sid = FastHasher64<ID>(cp.buckets_[tmp.first].seed)(k) >> 62;
+          modifications.emplace_back((tmp.first << 2) + sid, pair<ID, FP>(v, finger));
         } else { //insert
           ID k;
-          FP finger = FastHasher64<ID>(0)(k);
           while (true) {
             keyGen.gen(&k);
             //k = IU[rand() % dcnum][rand() % userdcnum].id;
@@ -260,9 +260,12 @@ public:
             }
           }
           DC v = rand() % dcnum;
+          FP finger = FastHasher64<ID>(0)(k);
           vector<MPC_PathEntry> path;
+          //cp.insert(k, v);
           cp.insert(k, v, &path);
           insertPaths.emplace_back(path, pair<ID, DC>(v, finger));
+          //dp.applyInsert(path, v, finger);
 
           uint32_t s = 0;
           for (auto e: path) {
@@ -275,6 +278,42 @@ public:
 
       {
         DataPlaneMinimalPerfectCuckoo<ID, DC> dp(cp);
+        /* test for update/modification.
+        {
+          DC aaa;
+          int flaggg;
+          ID mk = IU[rand() % dcnum][rand() % userdcnum].id;
+          pair<uint32_t, uint32_t> tmp = cp.locate(mk);
+          flaggg = dp.lookUp(mk, aaa);
+          DC v = 99;
+          FP finger = FastHasher64<ID>(0)(mk) >> 48;
+          cp.updateMapping(mk, v);
+          tmp = cp.locate(mk);
+          uint64_t seed = cp.buckets_[tmp.first].seed;
+          uint8_t sid = FastHasher64<ID>(seed)(mk) >> 62;
+          dp.applyUpdate((tmp.first << 2) + sid, v, finger);
+          flaggg = dp.lookUp(mk, aaa);
+          cout << "flaggg"<<endl;
+        }
+        */
+        /*
+        //test for insert;
+        {
+          DC aaa;
+          int flaggg;
+          ID mk = 89;
+          flaggg = dp.lookUp(mk, aaa);
+          vector<MPC_PathEntry> path;
+          DC v = 18;
+          FP finger = FastHasher64<ID>(0)(mk) >> 48;
+          cp.insert(mk, v, &path);
+          //insertPaths.emplace_back(path, pair<ID, DC>(v, finger));
+          dp.applyInsert(path, v, finger);
+          flaggg = dp.lookUp(mk, aaa);
+          cout << "flaggg"<<endl;
+        }
+        */
+
         i = 0;
         //Clocker c("MPC apply " + to_string(lookupCnt) + " updates");
         for (auto iter = mobileuserlist.cbegin(); iter != mobileuserlist.end(); iter++) {
@@ -286,17 +325,17 @@ public:
           } else {// insert
             pair<vector<MPC_PathEntry>, pair<DC, FP>> tmp = insertPaths.at(i / 3);
             dp.applyInsert(tmp.first, tmp.second.first, tmp.second.second);
+            //int falgg = dp.lookUp();
           }
           i++;
         }
       }
-
     }//end benchmark
 
     void test() {
       //testStateArt();
       //testLudoHLR();
-      UpdateBenchMark();
+      testLudoUpdate();
     }
 
 };

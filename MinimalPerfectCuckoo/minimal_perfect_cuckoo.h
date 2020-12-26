@@ -838,7 +838,7 @@ public:
         if (cpBucket.occupiedMask & (1U << slot)) {
           const Key &k = cpBucket.keys[slot];
           //cause the locateHash(k) is 64bit, >>62, it should be 00~11, mapping into 0~3;
-          const uint8_t slotpos = locateHash(k) >> 62;
+          //const uint8_t slotpos = locateHash(k) >> 62;
           dpBucket.values[locateHash(k) >> 62] = cpBucket.values[slot];
           dpBucket.fingerprint[locateHash(k) >> 62] = fingerHash(k) >> 48;
         }
@@ -1039,7 +1039,7 @@ public:
 
       uint8_t toSlots[] = {entry.s0, entry.s1, entry.s2, entry.s3};
 
-      Value buffer1[4];       // solve the permutation is slow. just copy the 4 elements
+      Value buffer1[4];       // solve the permutation is slow. just copy the 4 elements.
       FP buffer2[4];
       for (char s = 0; s < 4; ++s) {
         buffer1[s] = bucket.values[s];
@@ -1090,11 +1090,16 @@ public:
   inline void applyUpdate(uint32_t bs, Value val, FP finger) {
     uint32_t bid = bs >> 2;
     uint8_t sid = bs & 3;
-
+    //这个slot的序号不是dp里面四个怎么排的序号,
+    //cp里面四个存储的顺序和dp是不一样的, 什么时候不一样的,
+    //构造dp的时候, 在构造函数的最后;
     lock[bid & 8191]++;
     COMPILER_BARRIER();
 
-    writeSlot(bid, sid, val & ValueMask, finger);
+    //uint32_t  fingerMask = (1U << 16) - 1;
+    Bucket buc = readBucket(bid);
+    //uint8_t sid = FastHasher64<Key>(0)(buc.seed);
+    writeSlot(bid, sid, val & ValueMask, finger);//& fingerMask);
 
     COMPILER_BARRIER();
     lock[bid & 8191]++;
