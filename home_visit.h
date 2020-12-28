@@ -20,12 +20,12 @@ public:
     DC usertype;
     ID Totalusernum;
     typedef uint16_t FP;
-    const DC dcnum = 20; //no more than 256;
+    const DC dcnum = 256; //variable any number;
     const ID userdcnum = Totalusernum / dcnum;
-    //double mobileuserrate = 0.66; // 2-2-6 for 14 if 0.4. 3-3-4 for 0.6;
+    map<ID, DC> mobileuserlist;
+    //double mobileuserrate = 0.66; //
     vector<vector<user<ID, DC>>> IU;//(dcnum, vector<user<ID, uint8_t>>(userdcnum,
     vector<vector<uint16_t>> dijkstraDC;
-    map<ID, DC> mobileuserlist;
     ControlPlaneMinimalPerfectCuckoo<ID, DC> *cptr;
     DataPlaneMinimalPerfectCuckoo<ID, DC> *dptr;
 
@@ -87,7 +87,7 @@ public:
     }
 
     void genInquiryList(const DC idc, const uint32_t req, vector<user<ID, DC>> &inquiryList) {
-      //usertype =0,1,2, maps to DH_V, DV_H, and D_H_V respectively.
+      //usertype = 1, 2, maps to DV_H, and D_H_V respectively.
 
       uint32_t bound = 0.5 * userdcnum;
       if (usertype == 1) {
@@ -98,15 +98,6 @@ public:
           inquiryList.push_back(IU[idc][rand() % bound + bound]);
       }
     }//end
-
-    void AddMobileUser(pair<ID, DC> &p) {
-      //pair<ID, DC> aa(34144134, 35);
-      (*cptr).insert(p.first, p.second);
-    }
-
-    void RemoveMobileUser(ID &target) {
-      (*cptr).remove(target);
-    }
 
     void testLudoHLR() {
       uint32_t nn(Totalusernum), cost(0), Req(1000);
@@ -119,8 +110,7 @@ public:
       DataPlaneMinimalPerfectCuckoo<ID, DC> dp(cp);
       cptr = &cp;
       dptr = &dp;
-      //cp.insert(444,4);
-      //DC aaa;int flagg = dp.lookUp(444,aaa);
+      //cp.insert(444,4); //DC aaa;int flagg = dp.lookUp(444,aaa);
       //int flaggg = cp.lookUp(444,aaa);
       for (DC iDCcnt = 0; iDCcnt < dcnum; ++iDCcnt) {
         //unsigned Req = 100, iReq = 1;
@@ -132,7 +122,8 @@ public:
           DC LudoFindVisitor{0};
           //replace for a little while.
           //cp.lookUp(ID, LudoFindVisitor);
-          //if ((Visitor == mobileuserlist.end())){//&&(!dp.lookUp(ID, LudoFindVisitor))) {
+          //if ((Visitor == mobileuserlist.end())){
+          // (!dp.lookUp(ID, LudoFindVisitor))) {
           if (!(dp.lookUp(id, LudoFindVisitor))) {
             //cout << "Not found in Mobile user list" << endl;
             cost += dijkstraDC[iDCcnt][Home];
@@ -150,6 +141,7 @@ public:
           }
         }
       }
+
       //cpBuild.stop();
       cost /= (Req * dcnum);
       oss << "Ludo RTT: " << cost << endl;
@@ -167,8 +159,6 @@ public:
       //Clocker soatime("State of Art");
       for (DC iDCcnt = 0; iDCcnt < dcnum; ++iDCcnt) {
         //gen_request for every DC, OutLocInfoRatio percent:-> not this DC;
-        //1-ratio percent:-> this DC; Total 1000 times; 0.5 means outLocInfoRatio;
-        //unsigned Req = 10, cost = 0, iReq = 1;
         //for (unsigned iReq = 1; iReq <= Req; ++iReq) {
         vector<user<ID, DC>> inquiryList;
         genInquiryList(iDCcnt, Req, inquiryList);
@@ -217,13 +207,14 @@ public:
         }
       */
       cp.prepareToExport();
-      //dptr = &dp;
+      DataPlaneMinimalPerfectCuckoo<ID, DC> dp(cp);
+
       vector<pair<vector<MPC_PathEntry>, pair<DC, FP>>> insertPaths;
       vector<pair<uint32_t, pair<DC, FP>>> modifications;
       LFSRGen<ID> keyGen(0x1234567801234667ULL, 1U << 30, 0);
       // prepare many updates. modification : insertion : deletion = 1:1:1
-      uint8_t i = 0;
-      for (auto iter = mobileuserlist.cbegin(); iter != mobileuserlist.end(); iter++) {
+
+      for (uint16_t i = 0; i < mobileuserlist.size(); i++) {
         if (i % 3 == 0) {
           ID k;
           while (true) {
@@ -259,83 +250,283 @@ public:
               break;
             }
           }
-          DC v = rand() % dcnum;
+          DC v = 99;
           FP finger = FastHasher64<ID>(0)(k);
           vector<MPC_PathEntry> path;
           //cp.insert(k, v);
           cp.insert(k, v, &path);
           insertPaths.emplace_back(path, pair<ID, DC>(v, finger));
           //dp.applyInsert(path, v, finger);
-
           uint32_t s = 0;
           for (auto e: path) {
             s += e.locatorCC.size() * 4;
           }
           //counter()
         }
-        i++;
       }
 
+      //test for update/modification.
+      //DataPlaneMinimalPerfectCuckoo<ID, DC> dp(cp);
+      /*
       {
-        DataPlaneMinimalPerfectCuckoo<ID, DC> dp(cp);
-        /* test for update/modification.
-        {
-          DC aaa;
-          int flaggg;
-          ID mk = IU[rand() % dcnum][rand() % userdcnum].id;
-          pair<uint32_t, uint32_t> tmp = cp.locate(mk);
-          flaggg = dp.lookUp(mk, aaa);
-          DC v = 99;
-          FP finger = FastHasher64<ID>(0)(mk) >> 48;
-          cp.updateMapping(mk, v);
-          tmp = cp.locate(mk);
-          uint64_t seed = cp.buckets_[tmp.first].seed;
-          uint8_t sid = FastHasher64<ID>(seed)(mk) >> 62;
-          dp.applyUpdate((tmp.first << 2) + sid, v, finger);
-          flaggg = dp.lookUp(mk, aaa);
-          cout << "flaggg"<<endl;
-        }
-        */
-        /*
-        //test for insert;
-        {
-          DC aaa;
-          int flaggg;
-          ID mk = 89;
-          flaggg = dp.lookUp(mk, aaa);
-          vector<MPC_PathEntry> path;
-          DC v = 18;
-          FP finger = FastHasher64<ID>(0)(mk) >> 48;
-          cp.insert(mk, v, &path);
-          //insertPaths.emplace_back(path, pair<ID, DC>(v, finger));
-          dp.applyInsert(path, v, finger);
-          flaggg = dp.lookUp(mk, aaa);
-          cout << "flaggg"<<endl;
-        }
-        */
+        DC aaa;
+        int flaggg;
+        ID mk = IU[rand() % dcnum][rand() % userdcnum].id;
+        pair<uint32_t, uint32_t> tmp = cp.locate(mk);
+        flaggg = dp.lookUp(mk, aaa);
+        DC v = 99;
+        FP finger = FastHasher64<ID>(0)(mk) >> 48;
+        cp.updateMapping(mk, v);
+        tmp = cp.locate(mk);
+        uint64_t seed = cp.buckets_[tmp.first].seed;
+        uint8_t sid = FastHasher64<ID>(seed)(mk) >> 62;
+        dp.applyUpdate((tmp.first << 2) + sid, v, finger);
+        flaggg = dp.lookUp(mk, aaa);
+        cout << "flaggg" << endl;
+      }
+      */
+      //test for insert;
+      /*
+      {
+        DC aaa;
+        int flaggg;
+        ID mk = 89;
+        flaggg = dp.lookUp(mk, aaa);
+        vector<MPC_PathEntry> path;
+        DC v = 18;
+        FP finger = FastHasher64<ID>(0)(mk) >> 48;
+        cp.insert(mk, v, &path);
+        //insertPaths.emplace_back(path, pair<ID, DC>(v, finger));
+        dp.applyInsert(path, v, finger);
+        flaggg = dp.lookUp(mk, aaa);
+        cout << "flaggg"<<endl;
+      }
+      */
 
-        i = 0;
-        //Clocker c("MPC apply " + to_string(lookupCnt) + " updates");
-        for (auto iter = mobileuserlist.cbegin(); iter != mobileuserlist.end(); iter++) {
-          if (i % 3 == 0) { // delete
-            // empty
-          } else if (i % 3 == 1) { // modify
-            pair<uint32_t, pair<DC, FP>> tmp = modifications.at(i / 3);
-            dp.applyUpdate(tmp.first, tmp.second.first, tmp.second.second);
-          } else {// insert
-            pair<vector<MPC_PathEntry>, pair<DC, FP>> tmp = insertPaths.at(i / 3);
-            dp.applyInsert(tmp.first, tmp.second.first, tmp.second.second);
-            //int falgg = dp.lookUp();
-          }
-          i++;
+      // Clocker c("MPC apply " + to_string(lookupCnt) + " updates");
+      for (uint16_t i = 0; i < mobileuserlist.size(); i++) {
+        if (i % 3 == 0) {  // delete
+          // empty
+        } else if (i % 3 == 1) { // modify
+          pair<uint32_t, pair<DC, FP>> tmp = modifications.at(i / 3);
+          dp.applyUpdate(tmp.first, tmp.second.first, tmp.second.second);
+        } else {// insert
+          pair<vector<MPC_PathEntry>, pair<DC, FP>> tmp = insertPaths.at(i / 3);
+          dp.applyInsert(tmp.first, tmp.second.first, tmp.second.second);
+          //int falgg = dp.lookUp();
         }
       }
-    }//end benchmark
+      cout << "thanks folks!" << endl;
+
+
+    }//end
+
+    vector<DC> NearNodeList(DC failServer, DC num) {
+      vector<DC> array(dcnum, 0);
+      vector<DC> res;
+      for (DC i = 0; i < dcnum; i++)
+        array[i] = dijkstraDC[failServer][i];
+      for (DC i = 0; i <= num; i++) {
+        auto min = min_element(array.begin(), array.end());
+        *min = 65535;
+        if (i == 0)
+          continue;
+        else
+          res.push_back((min - array.begin()));
+      }
+      return res;
+    }
+
+    void testAgentNode() {
+      //approach is that:
+      /*
+       * choose one user, choose a place P that is different from V and H, then, if V, rtt += (V-> P) and
+       * h dont know or know, to go near one; Concurrent N users for same situation;
+       *  --------------------------------------------
+       *  |         |  before fail   |   after fail  |
+       *  |   DV_H  |     cost[0]    |    cost[1]    |
+       *  |  D_V_H  |     cost[2]    |    cost[3]    |
+       *  --------------------------------------------
+       */
+      ControlPlaneMinimalPerfectCuckoo<ID, DC> cp(Totalusernum);
+      for (auto iter = mobileuserlist.cbegin(); iter != mobileuserlist.cend(); iter++) {
+        cp.insert(iter->first, iter->second);
+      }
+      cp.prepareToExport();
+      //set rtt range for DV_H, for example, DV is near, rtt <= 50 ms;
+      DataPlaneMinimalPerfectCuckoo<ID, DC> dp(cp);
+
+      //choose the failed server number;
+      DC failServerNum = 2;
+      DC NearServerNum = 4;
+      vector<DC> failServerList;
+
+      for (DC iFailServer = 0; iFailServer < failServerNum; iFailServer++) {
+        DC Stmp = rand() % dcnum;
+        auto it = find(failServerList.begin(), failServerList.end(), Stmp);
+        while (true) {  //not in fail Server List
+          if (it == failServerList.end())
+            break;
+          Stmp = rand() % dcnum;
+          it = find(failServerList.begin(), failServerList.end(), Stmp);
+        }
+        failServerList.push_back(Stmp);
+      }
+
+      //for (const auto failServer: failServerList) {
+      //DC failServer = 1;
+
+      //find the x th closet server to failServer; a vector contains x numbers;
+      DC iNearServer = 0;
+      vector<DC> NearServer(NearServerNum, 0);
+      vector<pair<uint32_t, pair<DC, FP>>> modifications;
+
+      for (const auto failServer: failServerList) {
+        NearServer = NearNodeList(failServer, NearServerNum);
+        for (auto iter = mobileuserlist.cbegin(); iter != mobileuserlist.cend(); iter++) {
+          //only change users that V is failServer;
+          if (iter->second == failServer) {
+            //change in control plane;
+            FP finger = FastHasher64<ID>(0)(iter->first) >> 48;
+
+            DC v = NearServer[iNearServer % NearServerNum];
+            //if v in Fail-Server list;
+            auto it = find(failServerList.begin(), failServerList.end(), v);
+            int count = 0;
+            while (it != failServerList.end()) {
+              count++;
+              iNearServer++;
+              v = NearServer[iNearServer % NearServerNum];
+              it = find(failServerList.begin(), failServerList.end(), v);
+              assert(count <= 3);
+            }
+
+            cp.updateMapping(iter->first, v);
+            pair<uint32_t, uint32_t> tmp = cp.locate(iter->first);
+            uint8_t sid = FastHasher64<ID>(cp.buckets_[tmp.first].seed)(iter->first) >> 62;
+            modifications.emplace_back((tmp.first << 2) + sid, pair<ID, FP>(v, finger));
+            //not change in mobileuserlist, just in control plane and data plane;
+            iNearServer++;
+          }
+        }
+      }
+
+      // DataPlaneMinimalPerfectCuckoo<ID, DC> dp(cp);
+      // update in data control plane;
+      for (ID i = 0; i < modifications.size(); i++) {
+        auto tmp = modifications.at(i);
+        dp.applyUpdate(tmp.first, tmp.second.first, tmp.second.second);
+      }
+
+      //lookUp and implement rtt evaluation
+      //gen inquiryList that V = failServer, H nobody care;
+      uint32_t Req(100), inquiryListSize(0);
+      vector<user<ID, DC>> inquiryList;     //D_H_V
+      vector<uint32_t> cost(2, 0);
+
+
+      for (const auto failServer:failServerList) {
+
+
+        //inline func inquiryList;
+        for (DC idc = 0; idc < dcnum; idc++) {
+          for (ID j = 0; j < userdcnum; j++) {
+            auto tmp = IU[idc][j];
+            if (tmp.VisitorLoc == failServer)
+              inquiryList.push_back(tmp);
+          }
+        }
+        inquiryListSize += inquiryList.size();
+
+
+        for (DC iDCcnt = 0; iDCcnt < dcnum; ++iDCcnt) {
+
+          //unsigned Req = 100, iReq = 1
+          /*
+          if (iDCcnt == failServer) {
+
+            //condition that D = V;
+            for (const auto tmp:inquiryList) {
+              ID id = tmp.id;
+              DC Home = tmp.HomeLoc;
+              DC LudoFindVisitor{0};
+
+              if (!(dp.lookUp(id, LudoFindVisitor))) {
+                //cout << "Not found in Mobile user list" << endl;
+                assert(0);
+                cost[0] += dijkstraDC[iDCcnt][Home];
+                cost[1] += dijkstraDC[iDCcnt][Home];
+              } else {
+                //cost += (dijks[iDCcnt][tmp.H]>dijks[iDCcnt][LudoFindVisitor])?
+                // 2 * dijkstra[iDCcnt][LudoFindVisitor]: 2 * dijkstra[iDCcnt][LudoFindVisitor];
+                uint8_t Hflag = ((rand() % 100) <= 100 * tmp.HomeInfoRatio) ? 1 : 0;//info in home.
+                uint8_t Hnear = dijkstraDC[iDCcnt][Home] < dijkstraDC[iDCcnt][LudoFindVisitor] ? 1 : 0;
+                if (Hflag == 1 && Hnear == 1) {
+                  cost[0] += dijkstraDC[iDCcnt][Home];
+                  cost[1] += dijkstraDC[iDCcnt][Home];
+                } else if (Hflag == 0 && Hnear == 0) {
+                  cost[0] += dijkstraDC[iDCcnt][failServer];
+                  cost[1] += (dijkstraDC[iDCcnt][failServer] + dijkstraDC[LudoFindVisitor][failServer]);
+                } else {
+                  cost[0] += dijkstraDC[iDCcnt][failServer] + dijkstraDC[iDCcnt][Home];
+                  cost[1] += dijkstraDC[iDCcnt][failServer] + dijkstraDC[iDCcnt][Home] +
+                             dijkstraDC[LudoFindVisitor][failServer];
+                }
+              }
+            }
+          } else {
+            */
+
+          for (const auto tmp:inquiryList) {
+            ID id = tmp.id;
+            DC Home = tmp.HomeLoc;
+            DC LudoFindVisitor{0};
+
+            if (!(dp.lookUp(id, LudoFindVisitor))) {
+              //cout << "Not found in Mobile user list" << endl;
+              assert(0);
+              cost[2] += dijkstraDC[iDCcnt][Home];
+              cost[3] += dijkstraDC[iDCcnt][Home];
+            } else {
+              //cost += (dijks[iDCcnt][tmp.H]>dijks[iDCcnt][LudoFindVisitor])?
+              // 2 * dijkstra[iDCcnt][LudoFindVisitor]: 2 * dijkstra[iDCcnt][LudoFindVisitor];
+              uint8_t Hflag = ((rand() % 100) <= 100 * tmp.HomeInfoRatio) ? 1 : 0;//info in home.
+              uint8_t Hnear = dijkstraDC[iDCcnt][Home] < dijkstraDC[iDCcnt][LudoFindVisitor] ? 1 : 0;
+              if (Hflag == 1 && Hnear == 1) {
+                cost[0] += dijkstraDC[iDCcnt][Home];
+                cost[1] += dijkstraDC[iDCcnt][Home];
+              } else if (Hflag == 0 && Hnear == 0) {
+                cost[0] += dijkstraDC[iDCcnt][failServer];
+                cost[1] += (dijkstraDC[iDCcnt][failServer] + dijkstraDC[LudoFindVisitor][failServer]);
+              } else {
+                cost[0] += dijkstraDC[iDCcnt][failServer] + dijkstraDC[iDCcnt][Home];
+                cost[1] += dijkstraDC[iDCcnt][failServer] + dijkstraDC[iDCcnt][Home] +
+                           dijkstraDC[LudoFindVisitor][failServer];
+              }
+            }//else
+
+          }// for
+
+        }//DC loop
+
+      }
+
+      cout << " - Uaena - BBIBBI - RTT: " << Totalusernum << endl;
+      cost[0] /= dcnum * inquiryListSize;
+      cost[1] /= dcnum * inquiryListSize;
+      for (auto el: cost) {
+        //el /= inquiryList.size();
+        cout << "D_V_H:   " << el << endl;
+      }
+      cout << endl;
+
+    }
 
     void test() {
       //testStateArt();
       //testLudoHLR();
-      testLudoUpdate();
+      //testLudoUpdate();
+      testAgentNode();
     }
 
 };
