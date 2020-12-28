@@ -9,7 +9,7 @@ struct user {
     ID id{0};
     DC HomeLoc{0};
     DC VisitorLoc{0};
-    float HomeInfoRatio = 0.5;
+    float HomeInfoRatio = 0.3;
 };
 
 template<class ID, class DC>
@@ -20,7 +20,7 @@ public:
     DC usertype;
     ID Totalusernum;
     typedef uint16_t FP;
-    const DC dcnum = 256; //variable any number;
+    const DC dcnum = 512; //variable any number;
     const ID userdcnum = Totalusernum / dcnum;
     map<ID, DC> mobileuserlist;
     //double mobileuserrate = 0.66; //
@@ -344,8 +344,8 @@ public:
        * h dont know or know, to go near one; Concurrent N users for same situation;
        *  --------------------------------------------
        *  |         |  before fail   |   after fail  |
-       *  |   DV_H  |     cost[0]    |    cost[1]    |
-       *  |  D_V_H  |     cost[2]    |    cost[3]    |
+       *  |  D_V_H  |     cost[0]    |    cost[1]    |
+       *  |State_Art|     cost[2]    |    cost[3]    |
        *  --------------------------------------------
        */
       ControlPlaneMinimalPerfectCuckoo<ID, DC> cp(Totalusernum);
@@ -357,24 +357,23 @@ public:
       DataPlaneMinimalPerfectCuckoo<ID, DC> dp(cp);
 
       //choose the failed server number;
-      DC failServerNum = 2;
+      DC failServerNum = 16;
       DC NearServerNum = 4;
       vector<DC> failServerList;
 
       for (DC iFailServer = 0; iFailServer < failServerNum; iFailServer++) {
-        DC Stmp = rand() % dcnum;
-        auto it = find(failServerList.begin(), failServerList.end(), Stmp);
+        DC tmp = rand() % dcnum;
+        auto it = find(failServerList.begin(), failServerList.end(), tmp);
         while (true) {  //not in fail Server List
           if (it == failServerList.end())
             break;
-          Stmp = rand() % dcnum;
-          it = find(failServerList.begin(), failServerList.end(), Stmp);
+          tmp = rand() % dcnum;
+          it = find(failServerList.begin(), failServerList.end(), tmp);
         }
-        failServerList.push_back(Stmp);
+        failServerList.push_back(tmp);
       }
 
       //for (const auto failServer: failServerList) {
-      //DC failServer = 1;
 
       //find the x th closet server to failServer; a vector contains x numbers;
       DC iNearServer = 0;
@@ -422,17 +421,17 @@ public:
       //gen inquiryList that V = failServer, H nobody care;
       uint32_t Req(100), inquiryListSize(0);
       vector<user<ID, DC>> inquiryList;     //D_H_V
-      vector<uint32_t> cost(2, 0);
+      vector<uint32_t> cost(4, 0);
 
 
-      for (const auto failServer:failServerList) {
-
+      //for (const auto failServer:failServerList) {
 
         //inline func inquiryList;
         for (DC idc = 0; idc < dcnum; idc++) {
           for (ID j = 0; j < userdcnum; j++) {
             auto tmp = IU[idc][j];
-            if (tmp.VisitorLoc == failServer)
+            auto itDC = find(failServerList.begin(),failServerList.end(),tmp.VisitorLoc);
+            if (itDC != failServerList.end())
               inquiryList.push_back(tmp);
           }
         }
@@ -477,9 +476,14 @@ public:
           } else {
             */
 
+          auto itDC = find(failServerList.begin(),failServerList.end(),iDCcnt);
+          if (itDC != failServerList.end())
+            continue;
+
           for (const auto tmp:inquiryList) {
             ID id = tmp.id;
             DC Home = tmp.HomeLoc;
+            DC failServer = tmp.VisitorLoc;
             DC LudoFindVisitor{0};
 
             if (!(dp.lookUp(id, LudoFindVisitor))) {
@@ -495,13 +499,29 @@ public:
               if (Hflag == 1 && Hnear == 1) {
                 cost[0] += dijkstraDC[iDCcnt][Home];
                 cost[1] += dijkstraDC[iDCcnt][Home];
+                cost[2] += dijkstraDC[iDCcnt][Home];
+                cost[3] += dijkstraDC[iDCcnt][Home];
               } else if (Hflag == 0 && Hnear == 0) {
                 cost[0] += dijkstraDC[iDCcnt][failServer];
                 cost[1] += (dijkstraDC[iDCcnt][failServer] + dijkstraDC[LudoFindVisitor][failServer]);
+                cost[2] += dijkstraDC[iDCcnt][failServer] + dijkstraDC[iDCcnt][Home];
+                cost[3] += (dijkstraDC[iDCcnt][failServer] + dijkstraDC[LudoFindVisitor][failServer] +
+                            dijkstraDC[iDCcnt][Home]);
+              } else if (Hflag == 1 && Hnear == 0) {
+                cost[0] += dijkstraDC[iDCcnt][failServer] + dijkstraDC[iDCcnt][Home];
+                cost[1] += dijkstraDC[iDCcnt][failServer] + dijkstraDC[iDCcnt][Home] +
+                           dijkstraDC[LudoFindVisitor][failServer];
+                cost[2] += dijkstraDC[iDCcnt][Home];
+                cost[3] += dijkstraDC[iDCcnt][Home];
               } else {
                 cost[0] += dijkstraDC[iDCcnt][failServer] + dijkstraDC[iDCcnt][Home];
                 cost[1] += dijkstraDC[iDCcnt][failServer] + dijkstraDC[iDCcnt][Home] +
                            dijkstraDC[LudoFindVisitor][failServer];
+                cost[2] += dijkstraDC[iDCcnt][Home] + dijkstraDC[iDCcnt][failServer] +
+                           dijkstraDC[LudoFindVisitor][failServer];
+                cost[3] += dijkstraDC[iDCcnt][Home] + dijkstraDC[iDCcnt][failServer] +
+                           dijkstraDC[LudoFindVisitor][failServer];
+
               }
             }//else
 
@@ -509,13 +529,13 @@ public:
 
         }//DC loop
 
-      }
 
       cout << " - Uaena - BBIBBI - RTT: " << Totalusernum << endl;
-      cost[0] /= dcnum * inquiryListSize;
-      cost[1] /= dcnum * inquiryListSize;
+      //cost[0] /= dcnum * inquiryListSize;
+      //cost[1] /= dcnum * inquiryListSize;
       for (auto el: cost) {
         //el /= inquiryList.size();
+        el /= (dcnum - failServerNum) * inquiryListSize;
         cout << "D_V_H:   " << el << endl;
       }
       cout << endl;
