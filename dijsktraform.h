@@ -46,7 +46,7 @@ void gen_dijkstraDC(vector<vector<uint16_t>> &RTTform, uint16_t dcnum) {
 
   //cout << abs((0%a)-(1%a)) <<endl;
 
-  cout << "RTT completed.";
+  cout << "RTT form completed."<< endl;
 }//end
 
 /*for(auto iter = RTTform.cbegin();iter!=RTTform.cend();iter++){

@@ -8,17 +8,17 @@
 using namespace std;
 
 template<class ID, class DC>
-void testHLR(uint8_t &ty, ID &T) {
-    LudoNearStateofArt<ID, DC> dd(ty, T);
+void testHLR(ID &T) {
+    LudoNearStateofArt<ID, DC> dd(T);
     dd.test();
 }
 
 int main(int argc, char **argv) {
     commonInit();
-    uint8_t ty = 1; uint32_t T = 16000;
+    uint32_t T = 16;
     //for (int i = 0; i < 6; i++) {
     //    T *= 2;
-        testHLR<uint32_t, uint16_t>(ty, T);
+        testHLR<uint32_t, uint16_t>(T);
     //}
 }
 
