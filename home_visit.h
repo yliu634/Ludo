@@ -20,14 +20,14 @@ public:
     DC usertype;
     ID Totalusernum;
     typedef uint16_t FP;
-    const DC dcnum = 512; //variable any number;
+    const DC dcnum = 99; //variable any number;
     const ID userdcnum = Totalusernum / dcnum;
     map<ID, DC> mobileuserlist;
     //double mobileuserrate = 0.66; //
     vector<vector<user<ID, DC>>> IU;//(dcnum, vector<user<ID, uint8_t>>(userdcnum,
     vector<vector<uint16_t>> dijkstraDC;
-    ControlPlaneMinimalPerfectCuckoo<ID, DC> *cptr;
-    DataPlaneMinimalPerfectCuckoo<ID, DC> *dptr;
+    //ControlPlaneMinimalPerfectCuckoo<ID, DC> *cptr;
+    //DataPlaneMinimalPerfectCuckoo<ID, DC> *dptr;
 
     explicit LudoNearStateofArt(uint8_t ty, ID Totl) : usertype(ty), Totalusernum(Totl) {
       Clear();
@@ -108,8 +108,8 @@ public:
       //cp.insert(444,4);
       cp.prepareToExport();
       DataPlaneMinimalPerfectCuckoo<ID, DC> dp(cp);
-      cptr = &cp;
-      dptr = &dp;
+      //cptr = &cp;
+      //dptr = &dp;
       //cp.insert(444,4); //DC aaa;int flagg = dp.lookUp(444,aaa);
       //int flaggg = cp.lookUp(444,aaa);
       for (DC iDCcnt = 0; iDCcnt < dcnum; ++iDCcnt) {
@@ -121,9 +121,7 @@ public:
           DC Home = tmp.HomeLoc;
           DC LudoFindVisitor{0};
           //replace for a little while.
-          //cp.lookUp(ID, LudoFindVisitor);
-          //if ((Visitor == mobileuserlist.end())){
-          // (!dp.lookUp(ID, LudoFindVisitor))) {
+
           if (!(dp.lookUp(id, LudoFindVisitor))) {
             //cout << "Not found in Mobile user list" << endl;
             cost += dijkstraDC[iDCcnt][Home];

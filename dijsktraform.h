@@ -1,5 +1,5 @@
 #include <vector>
-
+#include <fstream>
 void gen_dijkstraDC(vector<vector<uint16_t>> &RTTform, uint16_t dcnum) {
   /*RTTform.resize(dcnum);
   for (auto el:RTTform)
@@ -32,6 +32,7 @@ void gen_dijkstraDC(vector<vector<uint16_t>> &RTTform, uint16_t dcnum) {
   }
 */
 
+/*
   uint16_t a = ceil(sqrt(dcnum));
   for (int i = 0; i < dcnum; i++) {
     RTTform[i][i] = 0;
@@ -48,6 +49,46 @@ void gen_dijkstraDC(vector<vector<uint16_t>> &RTTform, uint16_t dcnum) {
 
   cout << "RTT completed.";
 }//end
+*/
+  //dcnum = 99;
+  float arr[99][99] = {0};
+  //float * arr[99];
+
+  ifstream infile;
+  infile.open("../SeattleData_11.txt");
+
+  if (!infile.is_open()) {
+    cout << "Error" << endl;
+    exit(1);
+  }
+
+  auto *ptr = &arr[0][0];
+  while (!infile.eof()) {
+    infile >> *ptr;
+    //*ptr = infile.get();
+    *ptr = round(*ptr * 1000); //transfer s to ms;
+    ptr++;
+  }
+
+  infile.close();
+  dcnum = 99;
+
+  for (int i = 0; i < dcnum; i++) {
+    for (int j = 0; j < dcnum; j++) {
+      RTTform[i][j] = arr[i][j];
+    }
+  }
+
+  //cout << abs((0%a)-(1%a)) <<endl;
+  cout << "RTT form completed." << endl;
+
+}//end
+
+/*for(auto iter = RTTform.cbegin();iter!=RTTform.cend();iter++){
+    for(auto iter2=iter->begin();iter2!=iter->end();iter2++){
+    }
+}*/
+
 
 /*for(auto iter = RTTform.cbegin();iter!=RTTform.cend();iter++){
     for(auto iter2=iter->begin();iter2!=iter->end();iter2++){
