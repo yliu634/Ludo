@@ -20,7 +20,7 @@ public:
 
     typedef uint32_t BP; // the bitmap class
     typedef uint16_t FP;
-    const DC dcnum = 16; //variable any number;
+    const DC dcnum = 99; //variable any number;
     const ID userdcnum = Totalusernum / dcnum;
 
     map<ID, user<ID, DC>> mobileuserlist;
@@ -73,31 +73,34 @@ public:
       for (auto iter = mobileuserlist.cbegin(); iter != mobileuserlist.cend(); iter++) {
         cp.insert(iter->first, iter->second.VisitorBitmap);
       }
-
       cp.prepareToExport();
       DataPlaneMinimalPerfectCuckoo<ID, BP> dp(cp);
 
       vector<ID> InquiryList;
-      vector<BP> cost(2, 0);
+      vector<uint64_t> cost(2, 0);
       BP VisitBitmap(0);
 
       for (DC iDC = 0; iDC < dcnum; iDC++) {
+        InquiryList.clear();
         GenInquiryListForEveryDC(InquiryList, iDC);
+        //cout << endl;
         for (const auto el: InquiryList) {
-
           auto iter = mobileuserlist.find(el);
           auto Home = iter->second.HomeLoc;
           dp.lookUp(el, VisitBitmap);
           auto tmpCost = CalculateRttCost(iDC, Home, VisitBitmap);
           cost[0] += tmpCost[0];
           cost[1] += tmpCost[1];
-
         }
       }
+
       cost[0] /= (dcnum * InquiryList.size());
       cost[1] /= (dcnum * InquiryList.size());
+      cout << endl;
+      cout << "Total Number of DCs: " << dcnum << endl;
       cout << "The Ludo and Near Rtt cost is: " << cost[0] << endl;
       cout << "The State of the art Rtt cost is: " << cost[1] << endl;
+      cout << endl;
     }
 
     inline uint64_t genRandNum(int num, DC dcnum, DC iDC) {
@@ -121,20 +124,21 @@ public:
 
       for (DC idc = 0; idc < dcnum; idc++) {
         if (idc == dc) continue;
-        for (ID iusernum = 0; iusernum < userdcnum; iusernum++) {
-          InquiryList.push_back(IU[idc][iusernum].id);
+        for (ID iUserNum = 0; iUserNum < userdcnum;   ) {
+          InquiryList.push_back(IU[idc][iUserNum].id);
+          iUserNum += 2;
         }
       }
     }
 
-    inline void transVisitors(vector<DC> &Visitor, uint64_t VisitBitmap) {
+    inline void transVisitors(vector<DC> & Visitor, uint64_t VisitBitmap) {
 
       uint16_t isDC;
       for (int i = 0; i < dcnum; i++) {
         isDC = VisitBitmap & 0x01;
         VisitBitmap >>= 1;
         if (isDC == 1)
-          Visitor.push_back(isDC);
+          Visitor.push_back(i);
       }
     }
 
@@ -149,12 +153,15 @@ public:
         VisitorRttCost.push_back(dijkstraDC[el][iDC]);
 
       size_t VisitorNum = Visitor.size();
-      DC VisitorContainInfo = rand() % (VisitorNum + 1);
+      DC VisitorContainInfo = rand() % (VisitorNum);
 
-      for (int i = 0; i < VisitorContainInfo; i++) {
+      for (int i = 0; i < VisitorContainInfo + 1; i++) {
         cost[1] += VisitorRttCost[i];
       }
+      //
+      cost[0] += VisitorRttCost[VisitorContainInfo];
 
+      /*
       for (size_t i = 0; i < VisitorRttCost.size(); i++) {   //{const auto el: VisitorRttCost) {
         auto MinRtt = min_element(begin(VisitorRttCost), end(VisitorRttCost));
         auto MinRttPosition = distance(VisitorRttCost.begin(), MinRtt);
@@ -164,12 +171,12 @@ public:
         if (MinRttPosition == VisitorContainInfo)
           break;
       }
+      */
 
       return cost;
     }
 
     ~LudoNearStateofArt() {
-
     }
 
     void test() {

@@ -14,12 +14,14 @@ void testHLR(ID &T) {
 }
 
 int main(int argc, char **argv) {
+
     commonInit();
-    uint32_t T = 16;
-    //for (int i = 0; i < 6; i++) {
-    //    T *= 2;
+    uint32_t T = 500;
+    for (int i = 0; i < 5; i++) {
+        T *= 2;
         testHLR<uint32_t, uint16_t>(T);
-    //}
+    }
+
 }
 
 
