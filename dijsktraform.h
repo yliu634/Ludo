@@ -1,6 +1,6 @@
 #include <vector>
 #include <fstream>
-void gen_dijkstraDC(vector<vector<uint16_t>> &RTTform, uint16_t dcnum) {
+void gen_dijkstraDC(vector<vector<uint16_t>> &RTTform, uint8_t dcnum) {
   /*RTTform.resize(dcnum);
   for (auto el:RTTform)
       el = vector<uint32_t>(dcnum, 0);*/

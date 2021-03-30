@@ -35,7 +35,7 @@ public:
 
     void Clear() {
 
-      vector<DC> empty_dijs(dcnum, 0);
+      vector<uint16_t> empty_dijs(dcnum, 0);
       dijkstraDC.clear();
       dijkstraDC.resize(dcnum, empty_dijs);
       gen_dijkstraDC(dijkstraDC, dcnum);
@@ -395,7 +395,7 @@ public:
     }
 
     vector<DC> NearNodeList(DC failServer, DC num) {
-      vector<DC> array(dcnum, 0);
+      vector<uint16_t> array(dcnum, 0);
       vector<DC> res;
       for (DC i = 0; i < dcnum; i++)
         array[i] = dijkstraDC[failServer][i];
@@ -410,7 +410,7 @@ public:
       return res;
     }
 
-    void testAgentNode() {
+    void testAgentNode(DC failServerNum) {
       //approach is that:
       /*
        * choose one user, choose a place P that is different from V and H, then, if V, rtt += (V-> P) and
@@ -430,8 +430,8 @@ public:
       DataPlaneMinimalPerfectCuckoo<ID, DC> dp(cp);
 
       //choose the failed server number;
-      DC failServerNum = 16;
-      DC NearServerNum = 4;
+      //DC failServerNum = 1;
+      DC NearServerNum = 10;
       vector<DC> failServerList;
 
       for (DC iFailServer = 0; iFailServer < failServerNum; iFailServer++) {
@@ -470,7 +470,7 @@ public:
               iNearServer++;
               v = NearServer[iNearServer % NearServerNum];
               it = find(failServerList.begin(), failServerList.end(), v);
-              assert(count <= 3);
+              //assert(count <= 3);
             }
 
             cp.updateMapping(iter->first, v);
@@ -506,48 +506,14 @@ public:
           auto itDC = find(failServerList.begin(),failServerList.end(),tmp.VisitorLoc);
           if (itDC != failServerList.end())
             inquiryList.push_back(tmp);
+          //genInquiryList(dcnum, 1000, inquiryList);
+
         }
       }
       inquiryListSize += inquiryList.size();
 
 
       for (DC iDCcnt = 0; iDCcnt < dcnum; ++iDCcnt) {
-
-        //unsigned Req = 100, iReq = 1
-        /*
-        if (iDCcnt == failServer) {
-
-          //condition that D = V;
-          for (const auto tmp:inquiryList) {
-            ID id = tmp.id;
-            DC Home = tmp.HomeLoc;
-            DC LudoFindVisitor{0};
-
-            if (!(dp.lookUp(id, LudoFindVisitor))) {
-              //cout << "Not found in Mobile user list" << endl;
-              assert(0);
-              cost[0] += dijkstraDC[iDCcnt][Home];
-              cost[1] += dijkstraDC[iDCcnt][Home];
-            } else {
-              //cost += (dijks[iDCcnt][tmp.H]>dijks[iDCcnt][LudoFindVisitor])?
-              // 2 * dijkstra[iDCcnt][LudoFindVisitor]: 2 * dijkstra[iDCcnt][LudoFindVisitor];
-              uint8_t Hflag = ((rand() % 100) <= 100 * tmp.HomeInfoRatio) ? 1 : 0;//info in home.
-              uint8_t Hnear = dijkstraDC[iDCcnt][Home] < dijkstraDC[iDCcnt][LudoFindVisitor] ? 1 : 0;
-              if (Hflag == 1 && Hnear == 1) {
-                cost[0] += dijkstraDC[iDCcnt][Home];
-                cost[1] += dijkstraDC[iDCcnt][Home];
-              } else if (Hflag == 0 && Hnear == 0) {
-                cost[0] += dijkstraDC[iDCcnt][failServer];
-                cost[1] += (dijkstraDC[iDCcnt][failServer] + dijkstraDC[LudoFindVisitor][failServer]);
-              } else {
-                cost[0] += dijkstraDC[iDCcnt][failServer] + dijkstraDC[iDCcnt][Home];
-                cost[1] += dijkstraDC[iDCcnt][failServer] + dijkstraDC[iDCcnt][Home] +
-                           dijkstraDC[LudoFindVisitor][failServer];
-              }
-            }
-          }
-        } else {
-          */
 
         auto itDC = find(failServerList.begin(),failServerList.end(),iDCcnt);
         if (itDC != failServerList.end())
@@ -567,8 +533,9 @@ public:
           } else {
             //cost += (dijks[iDCcnt][tmp.H]>dijks[iDCcnt][LudoFindVisitor])?
             // 2 * dijkstra[iDCcnt][LudoFindVisitor]: 2 * dijkstra[iDCcnt][LudoFindVisitor];
-            uint8_t Hflag = ((rand() % 100) <= 100 * tmp.HomeInfoRatio) ? 1 : 0;//info in home.
-            uint8_t Hnear = dijkstraDC[iDCcnt][Home] < dijkstraDC[iDCcnt][LudoFindVisitor] ? 1 : 0;
+            uint8_t Hflag = 0;//((rand() % 100) <= 100 * tmp.HomeInfoRatio) ? 1 : 0;//info in home.
+            //uint8_t Hnear = dijkstraDC[iDCcnt][Home] < dijkstraDC[iDCcnt][LudoFindVisitor] ? 1 : 0;
+            uint8_t Hnear = 0;
             if (Hflag == 1 && Hnear == 1) {
               cost[0] += dijkstraDC[iDCcnt][Home];
               cost[1] += dijkstraDC[iDCcnt][Home];
@@ -594,33 +561,34 @@ public:
                          dijkstraDC[LudoFindVisitor][failServer];
               cost[3] += dijkstraDC[iDCcnt][Home] + dijkstraDC[iDCcnt][failServer] +
                          dijkstraDC[LudoFindVisitor][failServer];
-
             }
+
           }//else
-
         }// for
-
       }//DC loop
 
 
-      cout << " - Uaena - BBIBBI - RTT: " << Totalusernum << endl;
+      cout << "Totalusernum: " << Totalusernum << endl;
+      cout << "Failnumserver: " << failServerNum << endl;
       //cost[0] /= dcnum * inquiryListSize;
       //cost[1] /= dcnum * inquiryListSize;
       for (auto el: cost) {
         //el /= inquiryList.size();
         el /= (dcnum - failServerNum) * inquiryListSize;
-        cout << "D_V_H:   " << el << endl;
+        cout << "Time Latency:  " << el << endl;
       }
       cout << endl;
 
     }
 
     void test() {
-      testStateArt();
-      testStateArt2();
-      testLudoHLR();
+      //testStateArt();
+      //testStateArt2();
+      //testLudoHLR();
       //testLudoUpdate();
-      //testAgentNode();
+      for (unsigned f = 1; f < 11; f++){
+        testAgentNode(2 * f);
+      }
     }
 
 };
