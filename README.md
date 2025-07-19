@@ -20,8 +20,9 @@ Our paper will appear in ACM SIGMETRICS 2020.
 ## Run demo
 
 ```sh
-# 0. setup 
-sudo apt-get install google-perftools libgoogle-perftools-dev cmake build-essential pkgconf
+# 0. setup
+sudo apt update
+sudo apt install google-perftools libgoogle-perftools-dev cmake build-essential pkgconf libssl-dev
 
 # 1. build
 mkdir release
