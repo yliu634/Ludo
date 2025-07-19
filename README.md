@@ -22,13 +22,13 @@ Our paper will appear in ACM SIGMETRICS 2020.
 ```sh
 # 0. setup
 sudo apt update
-sudo apt install google-perftools libgoogle-perftools-dev cmake build-essential pkgconf libssl-dev
+sudo apt install google-perftools libgoogle-perftools-dev cmake build-essential pkgconf libssl-dev clang
 
 # 1. build
 mkdir release
 cd release
-cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -G "CodeBlocks - Unix Makefiles" ..
-make microbenchmarks -j4
+cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ ..
+make -j4
 
 # 2. run tests
 ./microbenchmarks
